@@ -1,0 +1,345 @@
+<html>
+<head>
+<script>
+// context manager app by plato
+// runs in browser
+
+var ctxManager = function() {
+  this.state = {};
+  this.currentTime = null;
+  this.runTimeText = '';
+};
+
+ctxManager.prototype.init = function(){
+  console.log(JSON.stringify(localStorage.wizState));
+  if(!localStorage.wizState) { var cached = null; }
+  else { var cached = JSON.parse(localStorage.wizState)};
+//  else { var cached = null };
+
+  if(cached) {
+    this.load(cached);
+  } else {
+    var timeNow = new Date().toString();
+    var initState = 
+    {
+      contexts:
+      [
+        {name:'work', id:0, totaltime:null},
+        {name:'eve', id:1, totaltime:null},
+      ],
+
+      timeline:
+      [ { start:timeNow,
+          end: null,
+          ctxID:0
+        } ],
+
+      timepoints:
+      [ { time:timeNow,
+          note:'Initialized state'
+        } ],
+      
+      currentCtxID : 0
+    };
+    localStorage.wizState = JSON.stringify(initState);
+    this.load(initState);
+  };
+  this.updateDOMList();
+  this.tick();
+};
+
+ctxManager.prototype.load = function(state){
+  this.state = state;
+};
+
+ctxManager.prototype.save = function(){
+//  console.log('saving state:\n'+JSON.stringify(this.state));
+  localStorage.wizState = JSON.stringify(this.state);
+};
+
+ctxManager.prototype.changeCtx = function(newCtxID){
+  console.log('changing context');
+  var self = this;
+  if(self.state.currentCtxID == newCtxID){
+    return false;
+  };
+
+  var timeNow = new Date().toString();
+  var currentEvent = self.state.timeline.pop();
+  var currentCtx = self.ctxByID(self.state.currentCtxID) || null;
+  if(!currentCtx){
+    self.state.currentCtxID = newCtxID;
+    currentEvent={ctxID:newCtxID, start: timeNow, end:null};
+  } else if(currentEvent.ctxID != currentCtx.id) {
+    return new Error('currentCtx and most recent event mismatch');
+  };
+  currentEvent.end = timeNow; // this event is ending
+  self.state.timeline.push(currentEvent);
+  var delta = new Date(timeNow).getTime()
+            - new Date(currentEvent.start).getTime();  // delta in ms
+  currentCtx.totaltime += delta;
+  var nextEvent = {start: timeNow, end: null, ctxID: newCtxID}
+  self.state.timeline.push(nextEvent);
+  self.state.currentCtxID = newCtxID;
+  self.state.runTimeMS = 0;
+  self.updateDOMList();
+  self.save();
+};
+
+ctxManager.prototype.addCtx = function(name) {
+  console.log('Adding '+name);
+  var self = this;
+
+  var _c = self.state.contexts;
+  var _l = _c.length; 
+  if(_c.length == 0) {
+    var newid = 0;
+  } else {
+    var newid = _c[_l-1].id + 1;  // increment id of latest context
+  };
+
+  var tmp = { id:newid, name:name, totaltime:null};
+  
+  self.state.contexts.push(tmp); // add new to right end
+  self.save();
+  self.updateDOMList();
+};
+
+ctxManager.prototype.deleteCtx = function(id) {
+  var self = this;
+  var _c = self.ctxByID(id);
+  if(self.state.currentCtxID == id){
+    self.state.currentCtxID = null;
+  };
+  console.log('Deleting '+_c.name);
+  var _carr = self.state.contexts;
+  for(i=0;i<_carr.length;i++){
+    if(_carr[i].id == _c.id) {
+      var left = _carr.slice(0,i);
+      var right = _carr.slice(i+1,_carr.length)
+      self.state.contexts = left.concat(right);
+      break;
+    }
+  };
+  self.state.runTimeMS = 0;
+  self.save();
+  self.updateDOMList();
+};
+
+ctxManager.prototype.updateDOMTime = function() {
+  var displayTime = document.getElementById('timeNow');
+  var h0 = this.currentTime.getHours();      //not zero padded
+  var m0 = this.currentTime.getMinutes();
+  var s0 = this.currentTime.getSeconds();
+  var h  = ('00'+h0).slice(-2, h0.toString().length+2); // 2 rightmost chars, zero padded
+  var m  = ('00'+m0).slice(-2, m0.toString().length+2);
+  var s  = ('00'+s0).slice(-2, s0.toString().length+2);
+  
+  displayTime.innerHTML = h+ ':' +m+ ':' +s;
+};
+
+ctxManager.prototype.updateDOMList = function() {
+  var ctxList = document.getElementById('contextList');
+  ctxList.innerHTML='';
+
+  var self=this;
+
+  for(var i=0;i<this.state.contexts.length;i++){
+    var _id = this.state.contexts[i].id;
+    var _name = this.state.contexts[i].name;
+    
+    var ctxline = document.createElement('li');
+    ctxline.innerHTML = _name;
+
+    var totalTimeTxt = renderMS(self.ctxByID(_id).totaltime)
+
+    if(_id == this.state.currentCtxID){
+      ctxline.setAttribute('class','current');
+      var runtime = document.createElement('span');
+      runtime.setAttribute('class','runtime');
+      runtime.innerHTML = renderMS(self.state.runTimeMS);
+      ctxline.appendChild(runtime);
+      totalTimeTxt = renderMS(self.ctxByID(_id).totaltime + self.state.runTimeMS);
+    };
+
+    var total = document.createElement('span');
+    total.setAttribute('class','total');
+    total.innerHTML = totalTimeTxt;
+    ctxline.appendChild(total);
+
+    ctxline.setAttribute('id','ctx_'+_id);
+    ctxline.addEventListener('click',(function(_id){
+      return function(){
+        //console.log(this.attributes.id.slice(-2, );
+        self.changeCtx(_id);
+      };
+    })(_id), false);
+
+    var redX = document.createElement('span');
+    redX.setAttribute('class','redx');
+    redX.innerHTML = 'x';
+    redX.addEventListener('click',(function(_id){
+      return function(){
+        //console.log(this.attributes.id.slice(-2, );
+        self.deleteCtx(_id);
+      };
+    })(_id), false);
+    ctxline.appendChild(redX);
+    ctxList.appendChild(ctxline);
+  };
+};
+
+ctxManager.prototype.ctxAtTime = function(date1){
+  var self = this;
+  var _t = self.state.timeline;
+  var _tln = _t.length;
+  var context = null;
+  for(i=0;i<_tln;i++){
+    var delta1 = date1 - new Date(_t[i].start); // should be positive
+    var delta2 = new Date(_t[i].end) - date1;  // should be positive
+    if(delta1 >= 0 && delta2 >= 0) {
+      context=_t[i].context;
+      break;
+    };
+  };
+  return context;
+};
+
+ctxManager.prototype.ctxByID = function(id){
+  var _c = this.state.contexts;
+  var _cl = _c.length;
+  var ret = null;
+  for(i=0;i<_cl;i++){
+    if(_c[i].id == id) {
+      ret = _c[i];
+      return ret;
+    };
+  };
+  return ret;
+};
+
+ctxManager.prototype.tick = function(){
+  var self = this;
+  self.currentTime = new Date();
+
+  currentEvent = self.state.timeline.pop();
+    console.log(currentEvent.id);
+    console.log(self.state.currentCtxID);
+//  currentEventCtx = self.ctxByID(currentEvent.id);
+//  currentContext = self.ctxByID(self.state.currentCtxID);
+  if(currentEvent.ctxID != self.state.currentCtxID){
+    console.log('del0');
+    delta=0;
+  } else {
+    var delta= (self.currentTime.getTime()-(new
+      Date(currentEvent.start).getTime()));
+    currentEvent.end = self.currentTime.toString();
+  };
+  self.state.timeline.push(currentEvent);
+
+  self.state.runTimeMS = delta;
+  
+  self.save(); 
+  self.updateDOMTime();
+  self.updateDOMList();
+  if((this.currentTime.getSeconds() % 2) == 1) {
+    this.phase = 'tick';
+//    this.changeCtx(0);
+  } else {
+    this.phase = 'tock';
+  };
+
+  console.log(this.phase + '  ' + this.currentTime.getSeconds()%2);
+  window.setTimeout(
+    function(){  self.tick();  } 
+    , 1000
+  );
+  
+  return;
+};
+
+
+
+window.onload = function(){
+  var ctxWiz = new ctxManager();
+  if(!supports_html5_storage()) {
+    alert('browser needs html5 localstorage'); return false; 
+  };
+  ctxWiz.init();
+  var contextControls = document.getElementById('contextListControls');
+  var lastline = document.createElement('li');
+  var namebox = document.createElement('input');
+  namebox.setAttribute('type','text');
+  namebox.setAttribute('id','namebox');
+  namebox.setAttribute('style','display:inline');
+  var addbutton = document.createElement('button');
+  addbutton.setAttribute('id','addCtxBtn');
+  addbutton.setAttribute('style','display:inline');
+  addbutton.innerHTML = 'Add Context';
+  addbutton.addEventListener('click', (function(ctxWiz){
+    return function(){
+      ctxWiz.addCtx(document.getElementById('namebox').value);
+    }
+  })(ctxWiz));
+  lastline.appendChild(namebox);
+  lastline.appendChild(addbutton);
+  contextControls.appendChild(lastline);
+};
+
+var renderMS = function(delta){
+  var delta_d = Math.floor(delta/86400000); // milliseconds per day
+  var delta_h = Math.floor((delta%86400000) / 3600000);
+  var h_pad   = ('00'+delta_h).slice(-2, delta_h.toString().length+2);
+  var delta_m = Math.floor((delta%3600000) / 60000);
+  var m_pad   = ('00'+delta_m).slice(-2, delta_m.toString().length+2); 
+  var delta_s = Math.floor((delta%60000) / 1000);
+  var s_pad   = ('00'+delta_s).slice(-2, delta_s.toString().length+2); 
+
+  var ret = '';
+
+  if(delta_d == 0 && delta_h == 0 && delta_m == 0){
+    ret = delta_s+'s';
+  } else if(delta_d == 0 && delta_h == 0){
+    ret = m_pad+':'+s_pad;
+  } else if(delta_d == 0) {
+    ret = h_pad+':'+m_pad;
+  } else {
+    ret = delta_d+'d '+h_pad+':'+m_pad;
+  }; 
+  return ret;
+};
+
+// from diveintohtml5.info/storage.html
+var supports_html5_storage = function() {
+  try {
+    return 'localStorage' in window && window['localStorage'] !== null;
+  } catch (e) {
+    return false;
+  }
+};
+</script>
+<style>
+  li {list-style-type: none; height: 30px; font: 20px sans-serif; color:
+    #444444; position: relative;
+    background-color: #AAAAFF; padding-left: 30px; }
+  .current {background-color: #FFAAAA; font: bold 20px sans-serif; color: #000000}
+  .total{ position:absolute; right: 0px; width: 100px; padding-left:20px;}
+  .runtime{ position:absolute; right:100px; width: 100px; padding-right:20px;}
+  .redx{ position:absolute; right:0px; top: 0px; color:red;}
+  .redx:hover {cursor:pointer;}
+</style>
+</head>
+<body>
+  <div style='width:400px; margin:auto; padding-top:50px;'>
+    <ul id='contextList'>
+      <li> </li>
+    </ul>
+    <ul id='contextListControls'>
+      <li></li>
+    </ul>
+    <p> 
+    </p>
+    <span id='timeNow' style='font: 15px monospace black'></span>
+  </div>
+</body>
+</html>
