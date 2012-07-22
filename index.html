@@ -319,9 +319,11 @@ var supports_html5_storage = function() {
 };
 </script>
 <style>
+  ul {margin:0px; border:0px; padding:0px;}
+  li {margin:0px; border:0px; padding:0px;}
   li {list-style-type: none; height: 30px; font: 20px sans-serif; color:
     #444444; position: relative;
-    background-color: #AAAAFF; padding-left: 30px; }
+    background-color: #AAAAFF; padding-left: 12px;}
   .current {background-color: #FFAAAA; font: bold 20px sans-serif; color: #000000}
   .total{ position:absolute; right: 0px; width: 100px; padding-left:20px;}
   .runtime{ position:absolute; right:100px; width: 100px; padding-right:20px;}
@@ -330,7 +332,7 @@ var supports_html5_storage = function() {
 </style>
 </head>
 <body>
-  <div style='width:400px; margin:auto; padding-top:50px;'>
+  <div style='width:400px; margin:auto; padding-top:10px'>
     <ul id='contextList'>
       <li> </li>
     </ul>
