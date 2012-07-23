@@ -266,12 +266,12 @@ window.onload = function(){
     alert('browser needs html5 localstorage'); return false; 
   };
   ctxWiz.init();
-  var contextControls = document.getElementById('contextListControls');
-  var lastline = document.createElement('li');
+  var el_addctx = document.getElementById('contextListControls');
+  //var lastline = document.createElement('li');
   var namebox = document.createElement('input');
   namebox.setAttribute('type','text');
   namebox.setAttribute('id','namebox');
-  namebox.setAttribute('style','display:inline');
+  namebox.setAttribute('placeholder','____');
   var addbutton = document.createElement('button');
   addbutton.setAttribute('id','addCtxBtn');
   addbutton.setAttribute('style','display:inline');
@@ -281,9 +281,8 @@ window.onload = function(){
       ctxWiz.addCtx(document.getElementById('namebox').value);
     }
   })(ctxWiz));
-  lastline.appendChild(namebox);
-  lastline.appendChild(addbutton);
-  contextControls.appendChild(lastline);
+  el_addctx.appendChild(namebox);
+  el_addctx.appendChild(addbutton);
 };
 
 var renderMS = function(delta){
@@ -298,15 +297,16 @@ var renderMS = function(delta){
   var ret = '';
 
   if(delta_d == 0 && delta_h == 0 && delta_m == 0){
-    ret = delta_s+'s';
+    ret = '  :  :'+s_pad;
   } else if(delta_d == 0 && delta_h == 0){
-    ret = m_pad+':'+s_pad;
+    ret = '  :'+m_pad+':'+s_pad;
   } else if(delta_d == 0) {
-    ret = h_pad+':'+m_pad;
+    ret = h_pad+':'+m_pad+':00';
   } else {
-    ret = delta_d+'d '+h_pad+':'+m_pad;
+    ret = delta_d+'d, '+h_pad+':'+m_pad+':00';
   }; 
-  return ret;
+  
+  return ret; // 7 char string '  :  :05'
 };
 
 // from diveintohtml5.info/storage.html
@@ -319,29 +319,67 @@ var supports_html5_storage = function() {
 };
 </script>
 <style>
-  ul {margin:0px; border:0px; padding:0px;}
-  li {margin:0px; border:0px; padding:0px;}
-  li {list-style-type: none; height: 30px; font: 20px sans-serif; color:
-    #444444; position: relative;
-    background-color: #AAAAFF; padding-left: 12px;}
-  .current {background-color: #FFAAAA; font: bold 20px sans-serif; color: #000000}
-  .total{ position:absolute; right: 0px; width: 100px; padding-left:20px;}
-  .runtime{ position:absolute; right:100px; width: 100px; padding-right:20px;}
-  .redx{ position:absolute; right:0px; top: 0px; color:red;}
+  div,ul,li,span,input,button {margin:0; border:0; padding:0;}
+  ul {margin:0px; border:0px; padding:.5em; background-color:#111140;}
+  li {
+     position: relative;
+	 border-left:1px solid #88FF88; 
+	 border-right:1px solid #88FF88;
+	 padding:0 .5em 0 .5em;
+	 margin:0;
+ 
+     list-style-type: none; 
+	 height: 1em; 
+	 font-family: inconsolata,monospace; 
+	 font-size: 20px;
+	 color:#99FFCC; 
+     background-color: #111140; 
+	}
+  li:first-child {padding-top:.5em;border-top:1px solid #88FF88;}
+  li:last-child {padding-bottom:2.5em;border-bottom:1px solid #88FF88;}
+  .total{ position:absolute; right: 0px; width: 8em; 
+   padding-right:1em; 
+   color:#99ccff;
+   font-family: inconsolata,monospace;
+   font-weight: bold;
+   font-size: 20px; 
+   text-align:right;}
+  .current {font: bold 20px inconsolata ; color: #ff7777}
+  #ctxList{position:relative;}
+  #contextListControls{
+   position:relative;
+   top: -2.2em;
+   width:100%;
+
+   }
+  .runtime{ position:absolute; right:0px; width: 8em; padding-right:1.5em;font: bold 20px monospace;}
+  .redx{ position:absolute; right:0px; color:red;}
   .redx:hover {cursor:pointer;}
+  #addCtxBtn{
+   position:relative; right:1.5em;
+  font-family: inconsolata,monospace; font-size: 20px; background-color:#666666; float:right;
+  }
+  #addCtxBtn:hover {cursor:pointer;}
+  #namebox{
+    position:relative; left:1em; display:inline; height:1em;font-family:inconsolata,monospace; font-size:20px;
+	background-color: #111140; color: #AAAAAA;
+	}
+  #namebox:focus{border:none;}
+
+  
 </style>
 </head>
 <body>
   <div style='width:400px; margin:auto; padding-top:10px'>
+  <div id='ctxList' style=''>
     <ul id='contextList'>
       <li> </li>
     </ul>
-    <ul id='contextListControls'>
-      <li></li>
-    </ul>
-    <p> 
-    </p>
-    <span id='timeNow' style='font: 15px monospace black'></span>
+    <span id='contextListControls'></span>
   </div>
+  </div>
+  <p> 
+    <span id='timeNow' style='position:absolute; bottom:3px;right:3px; font-size: 30px;font-family "Arial Black",Helvetica,sans-serif'></span>
+  </p>
 </body>
 </html>
